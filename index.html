@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="レシピメモ">
+<meta name="theme-color" id="meta-theme" content="#F0F6FF">
+<title>レシピメモ</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit;appearance:none;-webkit-appearance:none}
+
+/* ===== CSS VARIABLES (theme) ===== */
+:root{
+  --tp:#378ADD;--tl:#DDEEFF;--tb:#378ADD;--tt:#E6F1FB;
+  --bg:#F0F6FF;--brd:#B5D4F4;--sbg:#F5F5F5;--sbrd:#D3D1C7;
+  --text:#042C53;--text2:#185FA5;--text3:#888;
+}
+
+/* ===== LAYOUT ===== */
+#app{max-width:430px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+#hdr{background:var(--bg);border-bottom:0.5px solid var(--brd);padding:0 14px;padding-top:env(safe-area-inset-top);height:calc(52px + env(safe-area-inset-top));display:flex;align-items:center;flex-shrink:0;gap:8px}
+#hdr .logo{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+#hdr-right{margin-left:auto;display:flex;gap:7px;align-items:center}
+#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+
+/* ===== HEADER BUTTONS ===== */
+.hdr-btn{background:#fff;border:1.5px solid #B5D4F4;border-radius:9px;padding:0;display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex-shrink:0}
+.hdr-btn img{width:20px;height:20px;display:block}
+.hdr-btn-text{background:var(--tl);border:0.5px solid var(--tp);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--text)}
+.hdr-btn-text.danger{background:#FFE8E8;border-color:#F09595;color:#A32D2D}
+
+/* ===== API BAR ===== */
+#api-bar{background:var(--tl);border-bottom:0.5px solid var(--brd);padding:10px 14px;display:none;flex-direction:column;gap:7px;flex-shrink:0}
+#api-bar.open{display:flex}
+.api-row{display:flex;gap:7px;align-items:center}
+.api-input{flex:1;padding:8px 10px;border:0.5px solid var(--sbrd);border-radius:8px;font-size:13px;background:#fff;color:var(--text)}
+.api-save-btn{padding:8px 14px;background:var(--tb);color:var(--tt);border:none;border-radius:8px;font-size:12px;white-space:nowrap}
+.api-note{font-size:10px;color:var(--text3)}
+
+/* ===== SEARCH BOX ===== */
+.sbox{background:var(--sbg);border:0.5px solid var(--sbrd);border-radius:12px;padding:11px;margin-bottom:10px}
+.stabs{display:flex;gap:6px;margin-bottom:8px}
+.stab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:500;background:var(--tl);color:var(--text);border:0.5px solid var(--tp);border-radius:8px;min-height:36px}
+.sir{display:flex;gap:7px;align-items:center}
+.si{flex:1;padding:9px 11px;border:0.5px solid var(--sbrd);border-radius:8px;font-size:14px;background:#fff;color:var(--text);min-height:40px}
+.si:focus{outline:none;border-color:var(--tp)}
+.bss{width:36px;height:36px;background:var(--tb);color:var(--tt);border:none;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tag-area{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--sbrd);min-height:22px}
+.tag-inc{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:var(--tl);color:var(--text);font-size:11px;border:0.5px solid var(--tp)}
+.tag-exc{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;background:#FFE8E8;color:#A32D2D;font-size:11px;border:0.5px solid #F09595}
+.tag-x{background:none;border:none;font-size:11px;opacity:0.7;padding:0;color:inherit;line-height:1}
+.tag-empty{font-size:11px;color:#AAAAAA;font-style:italic}
+
+/* ===== CATEGORY BAR ===== */
+.cat-bar{display:flex;gap:4px;overflow-x:auto;margin-bottom:8px;padding-bottom:3px;scrollbar-width:none}
+.cat-bar::-webkit-scrollbar{display:none}
+.cat-btn{padding:5px 11px;border:0.5px solid var(--tp);border-radius:20px;background:var(--tl);font-size:11px;color:var(--text);font-weight:500;white-space:nowrap;flex-shrink:0;min-height:30px}
+.cat-btn.active{background:var(--tb);border-color:var(--tb);color:var(--tt)}
+
+/* ===== RESULTS META ===== */
+.rmeta{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rcount{font-size:11px;color:var(--text2)}
+.clear-btn{font-size:11px;color:var(--text3);background:none;border:none;text-decoration:underline}
+
+/* ===== RECIPE GRID ===== */
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rcard{background:#fff;border:0.5px solid var(--brd);border-radius:10px;overflow:hidden;cursor:pointer;transition:opacity 0.15s}
+.rcard:active{opacity:0.7}
+.rcard-top{height:52px;background:var(--tl);display:flex;align-items:center;justify-content:center;font-size:22px;position:relative}
+.cat-badge{position:absolute;bottom:2px;right:2px;font-size:7px;font-weight:600;padding:1px 4px;border-radius:10px;color:#fff;line-height:1.5}
+.rcard-body{padding:5px 6px}
+.rcard-title{font-size:9px;font-weight:500;line-height:1.4;margin-bottom:1px;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rcard-time{font-size:8px;color:var(--text2)}
+.empty-state{text-align:center;padding:40px 20px;color:#AAAAAA;font-size:13px;grid-column:1/-1;line-height:2}
+
+/* ===== DETAIL VIEW ===== */
+.detail-wrap{background:#fff;border:0.5px solid var(--brd);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.detail-hero{background:var(--tl);padding:14px 16px;display:flex;gap:12px}
+.detail-emoji{font-size:44px;flex-shrink:0;line-height:1}
+.detail-info{flex:1;min-width:0}
+.detail-cat{display:inline-block;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;color:#fff;margin-bottom:6px}
+.detail-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.35}
+.detail-meta{display:flex;gap:10px;font-size:12px;color:var(--text2);flex-wrap:wrap;margin-bottom:6px}
+.detail-tags{display:flex;gap:4px;flex-wrap:wrap}
+.dtag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--tl);color:var(--text)}
+.detail-url{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text);text-decoration:none;padding:7px 12px;border:0.5px solid var(--tp);border-radius:8px;margin:8px 16px;background:var(--tl)}
+.detail-section{padding:12px 16px;border-top:0.5px solid var(--brd)}
+.section-title{font-size:10px;font-weight:500;color:#85B7EB;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px}
+.ing-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);margin-bottom:6px}
+.ing-dot{width:6px;height:6px;border-radius:50%;background:var(--tp);flex-shrink:0}
+.step-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--tb);color:var(--tt);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;line-height:1.55;color:var(--text)}
+.memo-text{font-size:13px;color:var(--text2);background:var(--tl);padding:10px 12px;border-radius:8px;line-height:1.65}
+
+/* ===== FORM ===== */
+.form-wrap{padding-bottom:20px}
+.form-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:12px}
+.method-tabs{display:flex;gap:5px;margin-bottom:12px}
+.mtab{padding:8px 12px;border:0.5px solid var(--tp);border-radius:8px;font-size:12px;color:var(--text);background:var(--tl);font-weight:500;min-height:36px}
+.field-group{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field-label{font-size:11px;color:var(--text2);font-weight:500}
+.field-row{display:flex;gap:8px}
+.field-row .field-group{flex:1;margin-bottom:0}
+.fi{padding:9px 11px;border:0.5px solid var(--sbrd);border-radius:8px;font-size:14px;background:#fff;color:var(--text);width:100%;min-height:40px}
+.fi:focus{outline:none;border-color:var(--tp)}
+.fsel{padding:9px 11px;border:0.5px solid var(--sbrd);border-radius:8px;font-size:14px;background:#fff;color:var(--text);width:100%;min-height:40px}
+.fsel:focus{outline:none;border-color:var(--tp)}
+.fta{padding:9px 11px;border:0.5px solid var(--sbrd);border-radius:8px;font-size:13px;background:#fff;color:var(--text);width:100%;resize:none;line-height:1.55}
+.fta:focus{outline:none;border-color:var(--tp)}
+.sub-note{font-size:10px;color:var(--tp);margin-top:3px}
+.time-row{display:flex;gap:7px;align-items:flex-start}
+.time-row .fi{flex:1}
+.auto-btn{padding:9px 10px;background:var(--tl);color:var(--text);border:0.5px solid var(--tp);border-radius:8px;font-size:11px;white-space:nowrap;flex-shrink:0;min-height:40px}
+.form-actions{display:flex;gap:8px;margin-top:14px}
+.save-btn{padding:12px 22px;background:var(--tb);color:var(--tt);border:none;border-radius:10px;font-size:14px;font-weight:500;min-height:44px;flex:1}
+.cancel-btn{padding:12px 16px;border:0.5px solid var(--tp);background:var(--tl);border-radius:10px;font-size:14px;color:var(--text);min-height:44px}
+
+/* ===== EMOJI PICKER ===== */
+.emoji-picker-wrap{margin-bottom:4px}
+.emoji-display-row{display:flex;gap:8px;align-items:center}
+.emoji-display{font-size:28px;width:44px;height:44px;border:0.5px solid var(--sbrd);border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.emoji-hint{font-size:11px;color:var(--tp)}
+.emoji-hint-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:6px;background:var(--sbg);border:0.5px solid var(--sbrd);border-radius:10px;padding:10px;margin-top:6px}
+.emoji-btn{font-size:20px;width:36px;height:36px;background:#fff;border:0.5px solid var(--sbrd);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.emoji-btn.sel{border-color:var(--tp);background:var(--tl)}
+.emoji-add-row{display:flex;gap:6px;margin-top:8px;width:100%}
+.emoji-add-input{flex:1;padding:7px 10px;border:0.5px solid var(--sbrd);border-radius:7px;font-size:18px;background:#fff;color:var(--text);min-width:0;min-height:40px}
+.emoji-add-btn{padding:7px 12px;background:var(--tb);color:var(--tt);border:none;border-radius:7px;font-size:12px;white-space:nowrap;min-height:40px}
+
+/* ===== URL / IMAGE / AI PANES ===== */
+.pane-desc{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6}
+.url-row{display:flex;gap:7px}
+.url-row .fi{flex:1}
+.fetch-btn{padding:9px 12px;background:var(--tb);color:var(--tt);border:none;border-radius:8px;font-size:12px;white-space:nowrap;min-height:40px;flex-shrink:0}
+.status-box{margin-top:9px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.55;display:none}
+.status-box.info{display:block;background:var(--tl);color:var(--text)}
+.status-box.error{display:block;background:#FFE8E8;color:#A32D2D}
+.status-box.success{display:block;background:#E1F5EE;color:#085041}
+.drop-zone{border:2px dashed var(--tp);border-radius:12px;padding:32px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:var(--text2);background:var(--sbg)}
+.drop-zone:active{background:var(--tl)}
+.ai-chat{background:var(--sbg);border:0.5px solid var(--sbrd);border-radius:12px;padding:11px;margin-bottom:9px;display:flex;flex-direction:column;gap:7px;height:200px;overflow-y:auto}
+.ai-bubble{padding:9px 12px;border-radius:9px;font-size:13px;line-height:1.55;max-width:90%}
+.ai-bubble.ai{background:#fff;border:0.5px solid var(--sbrd);color:var(--text);align-self:flex-start}
+.ai-bubble.user{background:var(--tb);color:var(--tt);align-self:flex-end}
+.ai-input-row{display:flex;gap:7px}
+.ai-input-row .fi{flex:1}
+
+/* ===== SETTINGS ===== */
+.settings-section{margin-bottom:18px}
+.settings-section-title{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--sbrd)}
+.theme-swatches{display:flex;gap:10px;flex-wrap:wrap}
+.theme-swatch{width:38px;height:38px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.theme-swatch.active{border-color:var(--text)}
+.cat-list{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:var(--sbg);border-radius:8px;font-size:13px;color:var(--text)}
+.cat-del{background:none;border:none;font-size:13px;color:#A32D2D;padding:4px 6px;min-height:32px;min-width:40px}
+.cat-add-row{display:flex;gap:6px}
+
+/* ===== TOAST ===== */
+#toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:#042C53;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap;z-index:1000}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== LOADING ===== */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);z-index:999;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--brd);border-top-color:var(--tp);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>読み込み中…</span>
+</div>
+
+<div id="toast"></div>
+
+<div id="app" style="visibility:hidden">
+  <div id="hdr">
+    <span class="logo">レシピメモ</span>
+    <div id="hdr-right">
+      <button class="hdr-btn" id="btn-add" onclick="App.showForm()" title="レシピを追加">
+        <img src="data:image/svg+xml,%3Csvg width='26' height='26' viewBox='0 0 26 26' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='13' cy='18' rx='8.5' ry='5.5' stroke='%23042C53' stroke-width='1.6'/%3E%3Crect x='4.5' y='13.5' width='17' height='2.4' rx='1.2' fill='%23042C53'/%3E%3Crect x='2.5' y='14.2' width='3' height='1.8' rx='0.9' fill='%23042C53'/%3E%3Crect x='20.5' y='14.2' width='3' height='1.8' rx='0.9' fill='%23042C53'/%3E%3Cpath d='M9.5 11.5 Q10.2 9.2 9.5 7' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M13 10.5 Q13.7 8.2 13 6' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M16.5 11.5 Q17.2 9.2 16.5 7' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='21' cy='6.5' r='4' fill='%23042C53'/%3E%3Cline x1='21' y1='4.8' x2='21' y2='8.2' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3Cline x1='19.3' y1='6.5' x2='22.7' y2='6.5' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E" alt="追加">
+      </button>
+      <button class="hdr-btn" id="btn-settings" onclick="App.toggleApiBar()" title="設定">
+        <img src="data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='2.8' stroke='%23042C53' stroke-width='1.6'/%3E%3Cpath d='M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2' stroke='%23042C53' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4l1.4-1.4M14 6l1.4-1.4' stroke='%23042C53' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E" alt="設定">
+      </button>
+    </div>
+  </div>
+  <div id="api-bar">
+    <div class="api-row">
+      <span style="font-size:12px;color:var(--text);white-space:nowrap;font-weight:500">API Key</span>
+      <input class="api-input" type="password" id="api-key-input" placeholder="sk-ant-...">
+      <button class="api-save-btn" onclick="App.saveApiKey()">保存</button>
+    </div>
+    <div class="api-note">URL取込・画像認識・AIチャット機能に使用。このデバイスのみに保存されます。</div>
+  </div>
+  <div id="main"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ================================================================
+   DB — IndexedDB wrapper (容量制限なし・大量データ対応)
+================================================================ */
+const DB = (() => {
+  const NAME = 'recipememo', VER = 1;
+  let _db = null;
+
+  async function open() {
+    if (_db) return _db;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(NAME, VER);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('recipes')) {
+          const s = db.createObjectStore('recipes', { keyPath: 'id' });
+          s.createIndex('cat', 'cat');
+          s.createIndex('createdAt', 'createdAt');
+        }
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function tx(store, mode, fn) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const t = db.transaction(store, mode);
+      const s = t.objectStore(store);
+      const req = fn(s);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function txAll(store) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const t = db.transaction(store, 'readonly');
+      const s = t.objectStore(store);
+      const req = s.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  return {
+    // Recipes
+    async getAllRecipes() { return txAll('recipes'); },
+    async putRecipe(r) { return tx('recipes', 'readwrite', s => s.put(r)); },
+    async deleteRecipe(id) { return tx('recipes', 'readwrite', s => s.delete(id)); },
+    // Settings
+    async getSetting(key) {
+      const r = await tx('settings', 'readonly', s => s.get(key));
+      return r ? r.value : null;
+    },
+    async setSetting(key, value) { return tx('settings', 'readwrite', s => s.put({ key, value })); },
+  };
+})();
+
+/* ================================================================
+   UTILS
+================================================================ */
+function toKata(s) { return s.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)); }
+function toHira(s) { return s.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)); }
+
+function matchJP(query, target) {
+  if (!query || !target) return false;
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  if (t.includes(q)) return true;
+  if (toHira(t).includes(toHira(q))) return true;
+  if (toKata(t).includes(toKata(q))) return true;
+  return false;
+}
+
+function recMatchesQuery(rec, query) {
+  const haystack = [
+    rec.title || '',
+    ...(rec.ings || []),
+    ...(rec.tags || []),
+    rec.memo || ''
+  ].join(' ');
+  return matchJP(query, haystack);
+}
+
+function getBadgeColor(cat) {
+  const m = { 主菜:'#D85A30', 副菜:'#1D9E75', スープ:'#185FA5', 主食:'#BA7517', おやつ:'#D4537E', イベント:'#7F77DD', その他:'#5F5E5A' };
+  return m[cat] || '#5F5E5A';
+}
+
+function guessEmoji(title) {
+  const m = [
+    ['卵','🥚'],['たまご','🥚'],['チャーハン','🥚'],
+    ['ご飯','🍚'],['丼','🍚'],['そぼろ','🍚'],['おにぎり','🍚'],['炊き込み','🍚'],
+    ['パン','🍞'],['トースト','🍞'],['サンド','🍞'],
+    ['クッキー','🍪'],['パンケーキ','🍪'],['ワッフル','🍪'],
+    ['ケーキ','🍰'],['タルト','🍰'],['プリン','🍮'],['ゼリー','🍮'],
+    ['トマト','🍅'],['ミートソース','🍅'],['ピザ','🍅'],
+    ['じゃがいも','🥔'],['ポテト','🥔'],['コロッケ','🥔'],
+    ['玉ねぎ','🧅'],['オニオン','🧅'],
+    ['肉','🍖'],['チキン','🍖'],['鶏','🍖'],['豚','🍖'],['牛','🍖'],['ステーキ','🍖'],['唐揚げ','🍖'],['ハンバーグ','🍖'],
+    ['魚','🐟'],['鮭','🐟'],['サバ','🐟'],['さば','🐟'],['刺身','🐟'],['寿司','🐟'],
+    ['煮物','🍲'],['おでん','🍲'],['シチュー','🍲'],['カレー','🍲'],['鍋','🍲'],['ポトフ','🍲'],
+    ['スープ','🥣'],['みそ汁','🥣'],['味噌汁','🥣'],['ポタージュ','🥣'],
+    ['サラダ','🥗'],['和え物','🥗'],['マリネ','🥗'],
+    ['弁当','🍱'],['お弁当','🍱'],
+    ['ジュース','🍹'],['スムージー','🍹'],
+  ];
+  for (const [k, e] of m) if (title.includes(k)) return e;
+  return '🍳';
+}
+
+function cv2(ings, origSrv) {
+  if (!origSrv || origSrv === 2) return ings;
+  const ratio = 2 / origSrv;
+  return (ings || []).map(line => line.replace(/([\d.]+)/g, m => {
+    const n = parseFloat(m);
+    if (isNaN(n)) return m;
+    const v = n * ratio;
+    const fracs = [[1,2],[1,3],[2,3],[1,4],[3,4],[1,8]];
+    let best = null, bestD = Infinity;
+    fracs.forEach(([a,b]) => { const d = Math.abs(v - a/b); if (d < bestD) { bestD = d; best = `${a}/${b}`; } });
+    if (bestD < 0.05) return best;
+    if (v === Math.round(v)) return String(Math.round(v));
+    return parseFloat(v.toFixed(1)).toString();
+  }));
+}
+
+function estimateTime(stepsText) {
+  let tot = 0;
+  for (const s of stepsText.split('\n').filter(Boolean)) {
+    const h = s.match(/(\d+)時間/), m = s.match(/(\d+)分/);
+    if (h) tot += parseInt(h[1]) * 60;
+    if (m) tot += parseInt(m[1]);
+  }
+  if (tot === 0) tot = stepsText.split('\n').filter(Boolean).length * 8;
+  if (tot >= 60) { const h = Math.floor(tot/60), m = tot%60; return m ? `${h}時間${m}分` : `${h}時間`; }
+  return `${tot}分`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ================================================================
+   APP STATE
+================================================================ */
+const State = {
+  recipes: [],
+  cats: ['すべて','主菜','副菜','スープ','主食','おやつ','イベント','その他'],
+  emojis: ['🥚','🍚','🍞','🍪','🍰','🍅','🥔','🧅','🍖','🐟','🍲','🥣','🥗','🍱','🍹','🍮'],
+  themeIdx: 0,
+  activeCat: 'すべて',
+  incTags: [],
+  excTags: [],
+  searchMode: 'inc',
+  view: 'home',   // home | detail | form | settings
+  selectedId: null,
+  editId: null,
+  formMethod: 'manual',
+  currentEmoji: '🍳',
+  showEmojiPicker: false,
+};
+
+/* ================================================================
+   THEMES
+================================================================ */
+const THEMES = [
+  { n:'淡いブルー',   p:'#378ADD',l:'#DDEEFF',b:'#378ADD',t:'#E6F1FB',bg:'#F0F6FF',brd:'#B5D4F4',sbg:'#F5F5F5',sbrd:'#D3D1C7' },
+  { n:'パステルピンク',p:'#D4537E',l:'#FBEAF0',b:'#D4537E',t:'#FBEAF0',bg:'#FFF0F5',brd:'#F4C0D1',sbg:'#FAF0F4',sbrd:'#EDD0DA' },
+  { n:'グレー',        p:'#888780',l:'#F1EFE8',b:'#888780',t:'#F1EFE8',bg:'#F4F3EF',brd:'#D3D1C7',sbg:'#EBEBEB',sbrd:'#C8C6BE' },
+  { n:'ホワイト',      p:'#888780',l:'#F8F8F7',b:'#888780',t:'#fff',   bg:'#FFFFFF',brd:'#D3D1C7',sbg:'#F8F8F7',sbrd:'#D3D1C7' },
+  { n:'淡いグリーン',  p:'#1D9E75',l:'#E1F5EE',b:'#1D9E75',t:'#E1F5EE',bg:'#F0FAF5',brd:'#9FE1CB',sbg:'#EAF5F0',sbrd:'#C0DDD4' },
+  { n:'ダークグレー',  p:'#B4B2A9',l:'#444441',b:'#5F5E5A',t:'#F1EFE8',bg:'#3A3936',brd:'#5F5E5A',sbg:'#444441',sbrd:'#5F5E5A' },
+];
+
+function applyTheme(idx) {
+  State.themeIdx = idx;
+  const t = THEMES[idx];
+  const r = document.documentElement;
+  r.style.setProperty('--tp', t.p); r.style.setProperty('--tl', t.l);
+  r.style.setProperty('--tb', t.b); r.style.setProperty('--tt', t.t);
+  r.style.setProperty('--bg', t.bg); r.style.setProperty('--brd', t.brd);
+  r.style.setProperty('--sbg', t.sbg); r.style.setProperty('--sbrd', t.sbrd);
+  document.getElementById('meta-theme').content = t.bg;
+  DB.setSetting('themeIdx', idx).catch(() => {});
+}
+
+/* ================================================================
+   RENDER — safe DOM manipulation (no innerHTML on large datasets)
+================================================================ */
+const $ = id => document.getElementById(id);
+const main = () => $('main');
+
+function setMain(html) {
+  main().innerHTML = html;
+}
+
+/* ---- HOME ---- */
+function renderHome() {
+  const filtered = State.recipes.filter(r => {
+    if (State.activeCat !== 'すべて' && r.cat !== State.activeCat) return false;
+    if (State.incTags.length > 0 && !State.incTags.every(q => recMatchesQuery(r, q))) return false;
+    if (State.excTags.length > 0 &&  State.excTags.some(q => recMatchesQuery(r, q))) return false;
+    return true;
+  });
+
+  const hasFilt = State.incTags.length > 0 || State.excTags.length > 0 || State.activeCat !== 'すべて';
+
+  const incTagsHtml = State.incTags.map((s,i) =>
+    `<span class="tag-inc"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--tp);margin-right:3px;flex-shrink:0;vertical-align:middle"></span>${esc(s)}<button class="tag-x" onclick="App.removeTag('inc',${i})">✕</button></span>`
+  ).join('');
+  const excTagsHtml = State.excTags.map((s,i) =>
+    `<span class="tag-exc">▲${esc(s)}<button class="tag-x" onclick="App.removeTag('exc',${i})">✕</button></span>`
+  ).join('');
+  const tagsHtml = (incTagsHtml + excTagsHtml) || '<span class="tag-empty">材料未選択</span>';
+
+  const catBtns = State.cats.map(c =>
+    `<button class="cat-btn${State.activeCat===c?' active':''}" onclick="App.setCat('${esc(c)}')">${esc(c)}</button>`
+  ).join('');
+
+  let gridHtml;
+  if (filtered.length === 0) {
+    gridHtml = `<div class="empty-state">🍳<br>${hasFilt ? '該当するレシピが見つかりません' : 'まだレシピがありません<br>右上の＋ボタンから追加してください'}</div>`;
+  } else {
+    // ドキュメントフラグメントで構築（大量データ対応）
+    gridHtml = filtered.map(r =>
+      `<div class="rcard" onclick="App.showDetail(${r.id})">
+        <div class="rcard-top">${esc(r.emoji||'🍳')}<span class="cat-badge" style="background:${getBadgeColor(r.cat)}">${esc(r.cat)}</span></div>
+        <div class="rcard-body">
+          <div class="rcard-title">${esc(r.title)}</div>
+          <div class="rcard-time">⏱${esc(r.time||'')}</div>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  setMain(`
+    <div class="sbox">
+      <div class="stabs">
+        <button class="stab" onclick="App.setSearchMode('inc')">▼ 含む材料</button>
+        <button class="stab" onclick="App.setSearchMode('exc')">▲ 除く材料</button>
+      </div>
+      <div class="sir">
+        <input class="si" id="search-input" placeholder="${State.searchMode==='inc'?'含む材料を入力…':'除く材料を入力…'}" onkeydown="if(event.key==='Enter')App.addTag()">
+        <button class="bss" onclick="App.addTag()">🔍</button>
+      </div>
+      <div class="tag-area">${tagsHtml}</div>
+    </div>
+    <div class="cat-bar">${catBtns}</div>
+    <div class="rmeta">
+      <span class="rcount">${filtered.length}件</span>
+      ${hasFilt ? `<button class="clear-btn" onclick="App.clearFilter()">フィルターをクリア</button>` : ''}
+    </div>
+    <div class="rgrid">${gridHtml}</div>
+  `);
+}
+
+/* ---- DETAIL ---- */
+function renderDetail() {
+  const r = State.recipes.find(x => x.id === State.selectedId);
+  if (!r) { App.goHome(); return; }
+
+  // ヘッダー
+  $('hdr-right').innerHTML = `
+    <button class="hdr-btn-text" onclick="App.editRecipe(${r.id})">編集</button>
+    <button class="hdr-btn-text danger" onclick="App.deleteRecipe(${r.id})">削除</button>
+  `;
+
+  const ings2 = cv2(r.ings, r.srv);
+  const urlHtml = r.url ? `<a class="detail-url" href="${esc(r.url)}" target="_blank" rel="noopener">🔗 元レシピを見る</a>` : '';
+  const tagsHtml = (r.tags||[]).map(t => `<span class="dtag">${esc(t)}</span>`).join('');
+  const ingsHtml = ings2.map(i => `<div class="ing-item"><span class="ing-dot"></span>${esc(i)}</div>`).join('');
+  const stepsHtml = (r.steps||[]).map((s,i) => `<div class="step-item"><span class="step-num">${i+1}</span><span class="step-text">${esc(s)}</span></div>`).join('');
+  const memoHtml = r.memo ? `<div class="detail-section"><div class="section-title">メモ</div><div class="memo-text">${esc(r.memo)}</div></div>` : '';
+  const srvNote = r.srv && r.srv !== 2 ? `<span style="font-size:10px;color:var(--text3)">（元${r.srv}人分→換算済）</span>` : '';
+
+  setMain(`
+    <button class="hdr-btn-text" onclick="App.goHome()" style="margin-bottom:10px">← もどる</button>
+    <div class="detail-wrap">
+      <div class="detail-hero">
+        <div class="detail-emoji">${esc(r.emoji||'🍳')}</div>
+        <div class="detail-info">
+          <span class="detail-cat" style="background:${getBadgeColor(r.cat)}">${esc(r.cat)}</span>
+          <div class="detail-title">${esc(r.title)}</div>
+          <div class="detail-meta">
+            <span>⏱ ${esc(r.time||'')}</span>
+            <span>👥 2人分 ${srvNote}</span>
+          </div>
+          <div class="detail-tags">${tagsHtml}</div>
+        </div>
+      </div>
+      ${urlHtml}
+      <div class="detail-section"><div class="section-title">材料（2人分）</div>${ingsHtml}</div>
+      <div class="detail-section"><div class="section-title">作り方</div>${stepsHtml}</div>
+      ${memoHtml}
+    </div>
+  `);
+}
+
+/* ---- FORM ---- */
+function renderForm() {
+  $('hdr-right').innerHTML = '';
+
+  const isEdit = !!State.editId;
+  const rec = isEdit ? State.recipes.find(x => x.id === State.editId) : null;
+
+  const fc = State.cats.filter(c => c !== 'すべて');
+  const catOpts = fc.map(c => `<option value="${esc(c)}"${isEdit&&rec.cat===c?' selected':''}>${esc(c)}</option>`).join('');
+  const srvOpts = [1,2,3,4].map(n => `<option value="${n}"${isEdit&&rec.srv===n?' selected':n===2?' selected':''}>${n}人分</option>`).join('');
+
+  const methodTabsHtml = !isEdit ? `
+    <div class="method-tabs">
+      <button class="mtab" onclick="App.setFormMethod('manual')">✏️ 手動</button>
+      <button class="mtab" onclick="App.setFormMethod('url')">🔗 URL</button>
+      <button class="mtab" onclick="App.setFormMethod('image')">📷 画像</button>
+      <button class="mtab" onclick="App.setFormMethod('ai')">💬 AI</button>
+    </div>` : '';
+
+  let pane = '';
+  if (State.formMethod === 'manual' || isEdit) {
+    pane = `
+      <div class="field-group">
+        <div class="field-label">絵文字（レシピ名入力で自動選択）</div>
+        <div class="emoji-picker-wrap" id="emoji-picker-wrap">${buildEmojiPickerHtml()}</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">レシピ名 *</div>
+        <input class="fi" id="f-title" placeholder="例：鶏の照り焼き" value="${esc(rec?.title||'')}" oninput="App.onTitleInput()">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">カテゴリー</div>
+          <select class="fsel" id="f-cat">${catOpts}</select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">何人分？</div>
+          <select class="fsel" id="f-srv" onchange="App.onSrvChange()">${srvOpts}</select>
+          <div class="sub-note" id="srv-note">${isEdit&&rec.srv!==2?'2人分へ自動換算':'そのまま保存'}</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">調理時間（手動 or 手順から自動計算）</div>
+        <div class="time-row">
+          <input class="fi" id="f-time" placeholder="例：30分" value="${esc(rec?.time||'')}">
+          <button class="auto-btn" onclick="App.autoCalcTime()">⏱ 自動計算</button>
+        </div>
+        <div class="sub-note" id="time-note" style="display:none"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">タグ（読点区切り）</div>
+        <input class="fi" id="f-tags" placeholder="和食、夕食" value="${esc((rec?.tags||[]).join('、'))}">
+      </div>
+      <div class="field-group">
+        <div class="field-label">材料（1行1つ）</div>
+        <textarea class="fta" id="f-ings" rows="5" placeholder="鶏もも肉 300g&#10;醤油 大さじ2">${esc((rec?.ings||[]).join('\n'))}</textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">作り方（1行1ステップ・時間を書くと自動計算）</div>
+        <textarea class="fta" id="f-steps" rows="5" placeholder="鶏肉を切る（5分）&#10;フライパンで焼く（10分）">${esc((rec?.steps||[]).join('\n'))}</textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">メモ</div>
+        <textarea class="fta" id="f-memo" rows="3" placeholder="コツ・アレンジなど">${esc(rec?.memo||'')}</textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">元URL（任意）</div>
+        <input class="fi" id="f-url" placeholder="https://..." value="${esc(rec?.url||'')}">
+      </div>
+      <div class="form-actions">
+        <button class="save-btn" onclick="App.saveRecipe()">${isEdit?'更新する':'保存する'}</button>
+        <button class="cancel-btn" onclick="App.goHome()">クリア</button>
+      </div>`;
+  } else if (State.formMethod === 'url') {
+    pane = `
+      <p class="pane-desc">レシピページのURLを入力して「取り込む」を押してください。Anthropic APIキーが必要です（設定ボタンから入力）。</p>
+      <div class="url-row">
+        <input class="fi" id="f-url-input" placeholder="https://cookpad.com/recipe/...">
+        <button class="fetch-btn" onclick="App.fetchUrl()">取り込む</button>
+      </div>
+      <div class="status-box" id="url-status"></div>
+      <div class="form-actions"><button class="cancel-btn" onclick="App.clearUrlPane()">クリア</button></div>`;
+  } else if (State.formMethod === 'image') {
+    pane = `
+      <p class="pane-desc">レシピの写真をアップロードするとAIが内容を読み取ります。APIキーが必要です。</p>
+      <input type="file" id="img-file" accept="image/*" style="display:none" onchange="App.handleImage(this)">
+      <div class="drop-zone" onclick="document.getElementById('img-file').click()">📷<span>タップして画像を選択</span><span style="font-size:11px;color:var(--text3)">JPG・PNG・WebP対応</span></div>
+      <div class="status-box" id="img-status"></div>
+      <div class="form-actions"><button class="cancel-btn" onclick="App.goHome()">クリア</button></div>`;
+  } else {
+    pane = `
+      <div class="ai-chat" id="ai-chat">
+        <div class="ai-bubble ai">どんなレシピを追加しますか？「鶏の照り焼き、鶏もも肉・醤油・みりん、25分、主菜」のように話しかけてください。</div>
+      </div>
+      <div class="ai-input-row">
+        <input class="fi" id="ai-input" placeholder="レシピを説明してください…" onkeydown="if(event.key==='Enter')App.sendAi()">
+        <button class="fetch-btn" onclick="App.sendAi()">送信</button>
+      </div>
+      <div class="form-actions"><button class="cancel-btn" onclick="App.goHome()">クリア</button></div>`;
+  }
+
+  setMain(`
+    <button class="hdr-btn-text" onclick="App.goHome()" style="margin-bottom:12px">← もどる</button>
+    <div class="form-wrap">
+      <div class="form-title">${isEdit?'レシピを編集':'レシピを追加'}</div>
+      ${methodTabsHtml}
+      ${pane}
+    </div>
+  `);
+}
+
+/* ---- SETTINGS ---- */
+function renderSettings() {
+  $('hdr-right').innerHTML = '';
+
+  const swatches = THEMES.map((t,i) =>
+    `<div class="theme-swatch${i===State.themeIdx?' active':''}" style="background:${t.bg};border:2.5px solid ${i===State.themeIdx?'var(--text)':t.brd}" onclick="App.changeTheme(${i})" title="${t.n}">
+      ${i===State.themeIdx?`<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l4 4 6-6" stroke="${THEMES[i].p==='#888780'?'#444':'#042C53'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`:''}
+    </div>`
+  ).join('');
+
+  const emojisHtml = State.emojis.map((e,i) =>
+    `<div style="position:relative;display:inline-flex">
+      <button class="emoji-btn">${esc(e)}</button>
+      <button onclick="App.removeEmoji(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:#E24B4A;border:none;font-size:10px;color:white;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;cursor:pointer">×</button>
+    </div>`
+  ).join('');
+
+  const catListHtml = State.cats.filter(c=>c!=='すべて').map((c,i) =>
+    `<div class="cat-item"><span>${esc(c)}</span><button class="cat-del" onclick="App.removeCat(${i+1})">削除</button></div>`
+  ).join('');
+
+  setMain(`
+    <button class="hdr-btn-text" onclick="App.goHome()" style="margin-bottom:12px">← もどる</button>
+    <div class="form-title">設定</div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">テーマカラー</div>
+      <div class="theme-swatches">${swatches}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">現在: ${THEMES[State.themeIdx].n}</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">絵文字の管理</div>
+      <div class="emoji-grid" style="margin-bottom:10px">${emojisHtml}</div>
+      <div class="emoji-add-row">
+        <input class="emoji-add-input" id="emoji-new" placeholder="絵文字を追加…" maxlength="2">
+        <button class="emoji-add-btn" onclick="App.addEmojiFromSettings()">追加</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">カテゴリーの管理</div>
+      <div class="cat-list">${catListHtml}</div>
+      <div class="cat-add-row">
+        <input class="fi" id="cat-new" placeholder="新しいカテゴリー名…" style="flex:1">
+        <button class="emoji-add-btn" onclick="App.addCat()">追加</button>
+      </div>
+    </div>
+  `);
+}
+
+/* ---- EMOJI PICKER ---- */
+function buildEmojiPickerHtml() {
+  const btns = State.emojis.map(e =>
+    `<button class="emoji-btn${e===State.currentEmoji?' sel':''}" onclick="App.selectEmoji('${e}')">${esc(e)}</button>`
+  ).join('');
+  return `
+    <div class="emoji-display-row">
+      <div class="emoji-display" onclick="App.toggleEmojiPicker()">${esc(State.currentEmoji)}</div>
+      <div>
+        <div class="emoji-hint">✨ レシピ名から自動選択</div>
+        <div class="emoji-hint-sub">タップして手動変更</div>
+      </div>
+    </div>
+    <div class="emoji-grid" style="display:${State.showEmojiPicker?'flex':'none'}">
+      ${btns}
+      <div class="emoji-add-row">
+        <input class="emoji-add-input" id="emoji-form-new" placeholder="絵文字を追加…" maxlength="2">
+        <button class="emoji-add-btn" onclick="App.addEmojiFromForm()">追加</button>
+      </div>
+    </div>`;
+}
+
+function refreshEmojiPicker() {
+  const wrap = $('emoji-picker-wrap');
+  if (wrap) wrap.innerHTML = buildEmojiPickerHtml();
+}
+
+/* ================================================================
+   APP CONTROLLER
+================================================================ */
+const App = {
+  /* --- Navigation --- */
+  goHome() {
+    State.view = 'home';
+    State.selectedId = null;
+    State.editId = null;
+    // ヘッダーを戻す
+    $('hdr-right').innerHTML = `
+      <button class="hdr-btn" onclick="App.showForm()">
+        <img src="data:image/svg+xml,%3Csvg width='26' height='26' viewBox='0 0 26 26' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='13' cy='18' rx='8.5' ry='5.5' stroke='%23042C53' stroke-width='1.6'/%3E%3Crect x='4.5' y='13.5' width='17' height='2.4' rx='1.2' fill='%23042C53'/%3E%3Crect x='2.5' y='14.2' width='3' height='1.8' rx='0.9' fill='%23042C53'/%3E%3Crect x='20.5' y='14.2' width='3' height='1.8' rx='0.9' fill='%23042C53'/%3E%3Cpath d='M9.5 11.5 Q10.2 9.2 9.5 7' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M13 10.5 Q13.7 8.2 13 6' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M16.5 11.5 Q17.2 9.2 16.5 7' stroke='%23042C53' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='21' cy='6.5' r='4' fill='%23042C53'/%3E%3Cline x1='21' y1='4.8' x2='21' y2='8.2' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3Cline x1='19.3' y1='6.5' x2='22.7' y2='6.5' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E" alt="追加">
+      </button>
+      <button class="hdr-btn" onclick="App.toggleApiBar()">
+        <img src="data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='2.8' stroke='%23042C53' stroke-width='1.6'/%3E%3Cpath d='M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2' stroke='%23042C53' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4l1.4-1.4M14 6l1.4-1.4' stroke='%23042C53' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E" alt="設定">
+      </button>`;
+    renderHome();
+  },
+
+  showDetail(id) {
+    State.view = 'detail';
+    State.selectedId = id;
+    renderDetail();
+  },
+
+  showForm() {
+    State.view = 'form';
+    State.editId = null;
+    State.formMethod = 'manual';
+    State.currentEmoji = '🍳';
+    State.showEmojiPicker = false;
+    renderForm();
+  },
+
+  editRecipe(id) {
+    State.view = 'form';
+    State.editId = id;
+    const r = State.recipes.find(x => x.id === id);
+    if (!r) return;
+    State.currentEmoji = r.emoji || '🍳';
+    State.showEmojiPicker = false;
+    renderForm();
+  },
+
+  showSettings() {
+    State.view = 'settings';
+    renderSettings();
+  },
+
+  /* --- Search --- */
+  setSearchMode(mode) {
+    State.searchMode = mode;
+    renderHome();
+  },
+
+  addTag() {
+    const input = $('search-input');
+    if (!input) return;
+    const v = input.value.trim();
+    if (!v) return;
+    if (State.searchMode === 'inc') {
+      if (!State.incTags.includes(v)) State.incTags.push(v);
+    } else {
+      if (!State.excTags.includes(v)) State.excTags.push(v);
+    }
+    renderHome();
+  },
+
+  removeTag(type, i) {
+    if (type === 'inc') State.incTags.splice(i, 1);
+    else State.excTags.splice(i, 1);
+    renderHome();
+  },
+
+  setCat(c) {
+    State.activeCat = c;
+    renderHome();
+  },
+
+  clearFilter() {
+    State.incTags = [];
+    State.excTags = [];
+    State.activeCat = 'すべて';
+    renderHome();
+  },
+
+  /* --- Form methods --- */
+  setFormMethod(m) {
+    State.formMethod = m;
+    State.currentEmoji = '🍳';
+    State.showEmojiPicker = false;
+    renderForm();
+  },
+
+  toggleEmojiPicker() {
+    State.showEmojiPicker = !State.showEmojiPicker;
+    refreshEmojiPicker();
+  },
+
+  selectEmoji(e) {
+    State.currentEmoji = e;
+    State.showEmojiPicker = false;
+    refreshEmojiPicker();
+  },
+
+  onTitleInput() {
+    const t = $('f-title')?.value || '';
+    if (t) {
+      State.currentEmoji = guessEmoji(t);
+      refreshEmojiPicker();
+    }
+  },
+
+  onSrvChange() {
+    const v = $('f-srv')?.value;
+    const note = $('srv-note');
+    if (note) note.textContent = v === '2' ? 'そのまま保存' : '2人分へ自動換算';
+  },
+
+  autoCalcTime() {
+    const stepsEl = $('f-steps');
+    const timeEl = $('f-time');
+    const noteEl = $('time-note');
+    if (!stepsEl || !timeEl) return;
+    const t = estimateTime(stepsEl.value);
+    timeEl.value = t;
+    if (noteEl) { noteEl.textContent = `手順から自動計算: ${t}`; noteEl.style.display = 'block'; }
+  },
+
+  addEmojiFromForm() {
+    const inp = $('emoji-form-new');
+    const v = inp?.value.trim();
+    if (!v) return;
+    if (!State.emojis.includes(v)) {
+      State.emojis.push(v);
+      DB.setSetting('emojis', State.emojis).catch(() => {});
+    }
+    State.currentEmoji = v;
+    State.showEmojiPicker = true;
+    refreshEmojiPicker();
+  },
+
+  async saveRecipe() {
+    const titleEl = $('f-title');
+    if (!titleEl || !titleEl.value.trim()) { showToast('レシピ名を入力してください'); return; }
+
+    const origSrv = parseInt($('f-srv')?.value || '2');
+    const rawIngs = ($('f-ings')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+    const rec = {
+      id: State.editId || Date.now(),
+      title: titleEl.value.trim(),
+      cat: $('f-cat')?.value || State.cats[1] || '主菜',
+      time: $('f-time')?.value.trim() || '',
+      srv: 2,
+      tags: ($('f-tags')?.value || '').split(/[、,]/).map(s => s.trim()).filter(Boolean),
+      ings: cv2(rawIngs, origSrv),
+      steps: ($('f-steps')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
+      memo: $('f-memo')?.value.trim() || '',
+      emoji: State.currentEmoji,
+      url: $('f-url')?.value.trim() || '',
+      src: State.editId ? (State.recipes.find(r=>r.id===State.editId)?.src || '手動入力') : '手動入力',
+      createdAt: State.editId ? (State.recipes.find(r=>r.id===State.editId)?.createdAt || Date.now()) : Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    try {
+      await DB.putRecipe(rec);
+      if (State.editId) {
+        State.recipes = State.recipes.map(r => r.id === rec.id ? rec : r);
+        showToast('レシピを更新しました');
+      } else {
+        State.recipes.unshift(rec);
+        showToast('レシピを保存しました');
+      }
+      State.activeCat = 'すべて';
+      State.incTags = [];
+      State.excTags = [];
+      this.goHome();
+    } catch (err) {
+      showToast('保存に失敗しました: ' + err.message);
+    }
+  },
+
+  async deleteRecipe(id) {
+    if (!confirm('このレシピを削除しますか？')) return;
+    try {
+      await DB.deleteRecipe(id);
+      State.recipes = State.recipes.filter(r => r.id !== id);
+      showToast('削除しました');
+      this.goHome();
+    } catch (err) {
+      showToast('削除に失敗しました');
+    }
+  },
+
+  /* --- URL fetch --- */
+  async fetchUrl() {
+    const url = $('f-url-input')?.value.trim();
+    const status = $('url-status');
+    if (!url) { status.className = 'status-box error'; status.textContent = 'URLを入力してください。'; return; }
+    const apiKey = localStorage.getItem('recipememo_apikey') || '';
+    if (!apiKey) { status.className = 'status-box error'; status.textContent = 'APIキーが設定されていません。右上の歯車ボタンから入力してください。'; return; }
+    status.className = 'status-box info'; status.textContent = 'AIが読み込み中…';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:2000, messages:[{ role:'user', content:`以下のURLのレシピ情報をJSONで返してください。URLにアクセスできない場合はURLから推測してください。説明不要でJSONのみ返してください：\`\`\`json\n{"title":"","category":"主菜","time":"","servings":"2人分","ingredients":[],"steps":[],"memo":""}\`\`\`\nURL: ${url}` }] })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/({[\s\S]*})/);
+      if (!match) throw new Error('解析失敗');
+      const parsed = JSON.parse(match[1].trim());
+      if (!parsed?.title) throw new Error('タイトルが取得できませんでした');
+      // フォームに転記して手動タブへ
+      State.formMethod = 'manual';
+      State.currentEmoji = guessEmoji(parsed.title);
+      State.showEmojiPicker = false;
+      renderForm();
+      setTimeout(() => {
+        if ($('f-title')) $('f-title').value = parsed.title;
+        if ($('f-cat') && State.cats.includes(parsed.category)) $('f-cat').value = parsed.category;
+        if ($('f-time')) $('f-time').value = parsed.time || '';
+        if ($('f-ings')) $('f-ings').value = (parsed.ingredients||[]).join('\n');
+        if ($('f-steps')) $('f-steps').value = (parsed.steps||[]).join('\n');
+        if ($('f-memo')) $('f-memo').value = parsed.memo || '';
+        if ($('f-url')) $('f-url').value = url;
+        showToast('取り込み完了！内容を確認して保存してください');
+      }, 50);
+    } catch (err) {
+      if (status) { status.className = 'status-box error'; status.textContent = 'エラー: ' + err.message; }
+    }
+  },
+
+  clearUrlPane() {
+    const inp = $('f-url-input');
+    if (inp) inp.value = '';
+    const st = $('url-status');
+    if (st) { st.className = 'status-box'; st.textContent = ''; }
+  },
+
+  /* --- Image --- */
+  async handleImage(input) {
+    const file = input?.files?.[0];
+    const status = $('img-status');
+    if (!file) return;
+    const apiKey = localStorage.getItem('recipememo_apikey') || '';
+    if (!apiKey) { if(status){ status.className='status-box error'; status.textContent='APIキーが設定されていません。'; } return; }
+    if (status) { status.className = 'status-box info'; status.textContent = 'AIが画像を読み取り中…'; }
+    try {
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ()=>res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:2000, messages:[{ role:'user', content:[{ type:'image', source:{ type:'base64', media_type:file.type, data:b64 } },{ type:'text', text:'この画像からレシピを読み取り、JSONのみで返してください：\n```json\n{"title":"","category":"主菜","time":"","servings":"2人分","ingredients":[],"steps":[],"memo":""}\n```' }] }] })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || '';
+      const match = text.match(/```json\s*([\s\S]*?)```/) || text.match(/({[\s\S]*})/);
+      if (!match) throw new Error('解析失敗');
+      const parsed = JSON.parse(match[1].trim());
+      if (!parsed?.title) throw new Error('タイトルが取得できませんでした');
+      State.formMethod = 'manual';
+      State.currentEmoji = guessEmoji(parsed.title);
+      State.showEmojiPicker = false;
+      renderForm();
+      setTimeout(() => {
+        if ($('f-title')) $('f-title').value = parsed.title;
+        if ($('f-cat') && State.cats.includes(parsed.category)) $('f-cat').value = parsed.category;
+        if ($('f-time')) $('f-time').value = parsed.time || '';
+        if ($('f-ings')) $('f-ings').value = (parsed.ingredients||[]).join('\n');
+        if ($('f-steps')) $('f-steps').value = (parsed.steps||[]).join('\n');
+        if ($('f-memo')) $('f-memo').value = parsed.memo || '';
+        showToast('取り込み完了！内容を確認して保存してください');
+      }, 50);
+    } catch (err) {
+      if (status) { status.className = 'status-box error'; status.textContent = 'エラー: ' + err.message; }
+    }
+  },
+
+  /* --- AI Chat --- */
+  async sendAi() {
+    const input = $('ai-input');
+    const chat = $('ai-chat');
+    const v = input?.value.trim();
+    if (!v || !chat) return;
+    const apiKey = localStorage.getItem('recipememo_apikey') || '';
+    if (!apiKey) {
+      chat.innerHTML += `<div class="ai-bubble ai">APIキーが設定されていません。右上の歯車ボタンから入力してください。</div>`;
+      return;
+    }
+    chat.innerHTML += `<div class="ai-bubble user">${esc(v)}</div>`;
+    input.value = '';
+    const thinkingEl = document.createElement('div');
+    thinkingEl.className = 'ai-bubble ai';
+    thinkingEl.textContent = '考え中…';
+    chat.appendChild(thinkingEl);
+    chat.scrollTop = chat.scrollHeight;
+    try {
+      const msgs = [...chat.querySelectorAll('.ai-bubble:not(:last-child)')].map(el => ({
+        role: el.classList.contains('user') ? 'user' : 'assistant',
+        content: el.textContent
+      }));
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:2000,
+          system: 'あなたはレシピ登録アシスタントです。情報が揃ったら```json\n{"title":"","category":"主菜","time":"","servings":"2人分","ingredients":[],"steps":[],"memo":""}\n```の形式で返してください。まだ情報収集中は日本語で質問してください。',
+          messages: msgs
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      thinkingEl.remove();
+      chat.innerHTML += `<div class="ai-bubble ai">${esc(text)}</div>`;
+      chat.scrollTop = chat.scrollHeight;
+      const match = text.match(/```json\s*([\s\S]*?)```/);
+      if (match) {
+        const parsed = JSON.parse(match[1].trim());
+        if (parsed?.title) {
+          State.formMethod = 'manual';
+          State.currentEmoji = guessEmoji(parsed.title);
+          State.showEmojiPicker = false;
+          renderForm();
+          setTimeout(() => {
+            if ($('f-title')) $('f-title').value = parsed.title;
+            if ($('f-cat') && State.cats.includes(parsed.category)) $('f-cat').value = parsed.category;
+            if ($('f-time')) $('f-time').value = parsed.time || '';
+            if ($('f-ings')) $('f-ings').value = (parsed.ingredients||[]).join('\n');
+            if ($('f-steps')) $('f-steps').value = (parsed.steps||[]).join('\n');
+            if ($('f-memo')) $('f-memo').value = parsed.memo || '';
+            showToast('情報が揃いました！内容を確認して保存してください');
+          }, 50);
+        }
+      }
+    } catch (err) {
+      thinkingEl.remove();
+      chat.innerHTML += `<div class="ai-bubble ai">エラー: ${esc(err.message)}</div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
+  },
+
+  /* --- Settings actions --- */
+  async changeTheme(idx) {
+    applyTheme(idx);
+    renderSettings();
+  },
+
+  async removeEmoji(i) {
+    State.emojis.splice(i, 1);
+    await DB.setSetting('emojis', State.emojis).catch(() => {});
+    renderSettings();
+  },
+
+  async addEmojiFromSettings() {
+    const inp = $('emoji-new');
+    const v = inp?.value.trim();
+    if (!v) return;
+    if (!State.emojis.includes(v)) {
+      State.emojis.push(v);
+      await DB.setSetting('emojis', State.emojis).catch(() => {});
+    }
+    renderSettings();
+  },
+
+  async removeCat(i) {
+    if (State.cats.length <= 2) { showToast('カテゴリーは1つ以上必要です'); return; }
+    State.cats.splice(i, 1);
+    await DB.setSetting('cats', State.cats).catch(() => {});
+    renderSettings();
+  },
+
+  async addCat() {
+    const inp = $('cat-new');
+    const v = inp?.value.trim();
+    if (!v) return;
+    if (!State.cats.includes(v)) {
+      State.cats.push(v);
+      await DB.setSetting('cats', State.cats).catch(() => {});
+    }
+    renderSettings();
+  },
+
+  /* --- API Key --- */
+  toggleApiBar() {
+    const bar = $('api-bar');
+    const isOpen = bar.classList.toggle('open');
+    if (isOpen) $('api-key-input').value = localStorage.getItem('recipememo_apikey') || '';
+  },
+
+  saveApiKey() {
+    const v = $('api-key-input').value.trim();
+    if (v) localStorage.setItem('recipememo_apikey', v);
+    $('api-bar').classList.remove('open');
+    showToast('APIキーを保存しました');
+  },
+};
+
+/* ================================================================
+   INIT — IndexedDB からデータ読み込み
+================================================================ */
+(async function init() {
+  try {
+    // 設定を読み込む
+    const [savedCats, savedEmojis, savedTheme] = await Promise.all([
+      DB.getSetting('cats'),
+      DB.getSetting('emojis'),
+      DB.getSetting('themeIdx'),
+    ]);
+    if (savedCats)   State.cats   = savedCats;
+    if (savedEmojis) State.emojis = savedEmojis;
+    if (savedTheme != null) State.themeIdx = savedTheme;
+
+    // テーマ適用
+    applyTheme(State.themeIdx);
+
+    // レシピ読み込み（大量データでも安全）
+    const recipes = await DB.getAllRecipes();
+    // 新しい順にソート
+    recipes.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    State.recipes = recipes;
+
+    // localStorage から旧データを移行（初回のみ）
+    const migrated = await DB.getSetting('migrated_v1');
+    if (!migrated) {
+      try {
+        const old = localStorage.getItem('recipememo_v1');
+        if (old) {
+          const parsed = JSON.parse(old);
+          if (parsed.recs && parsed.recs.length > 0 && State.recipes.length === 0) {
+            for (const r of parsed.recs) {
+              await DB.putRecipe(r);
+            }
+            State.recipes = parsed.recs;
+            showToast('旧データを移行しました');
+          }
+        }
+      } catch (_) {}
+      await DB.setSetting('migrated_v1', true);
+    }
+
+    // サンプルデータ（初回のみ）
+    if (State.recipes.length === 0) {
+      const samples = [
+        {id:1001,title:'鶏もも肉のトマト煮込み',cat:'主菜',time:'30分',srv:2,tags:['洋食'],ings:['鶏もも肉 300g','トマト缶 1缶','玉ねぎ 1/2個'],steps:['鶏肉を切る（5分）','玉ねぎを炒める（5分）','20分煮込む'],memo:'子どもも好きな味。',emoji:'🍅',src:'サンプル',url:'',createdAt:Date.now()-6},
+        {id:1002,title:'ほうれん草と卵のスープ',cat:'スープ',time:'10分',srv:2,tags:['時短'],ings:['ほうれん草 1束','卵 1個','鶏ガラ 小さじ1'],steps:['沸かす（3分）','仕上げる（7分）'],memo:'朝食にも。',emoji:'🥣',src:'サンプル',url:'',createdAt:Date.now()-5},
+        {id:1003,title:'豚バラと大根の煮物',cat:'主菜',time:'45分',srv:4,tags:['和食'],ings:['豚バラ 400g','大根 1/3本','醤油 大さじ6'],steps:['下茹で（10分）','炒める（5分）','煮込む（30分）'],memo:'作り置きOK。',emoji:'🍲',src:'サンプル',url:'',createdAt:Date.now()-4},
+        {id:1004,title:'バナナパンケーキ',cat:'おやつ',time:'15分',srv:1,tags:['朝食'],ings:['バナナ 1本','オートミール 50g','卵 1個'],steps:['つぶす（2分）','焼く（10分）'],memo:'離乳食後期にも。',emoji:'🍪',src:'サンプル',url:'',createdAt:Date.now()-3},
+        {id:1005,title:'鶏そぼろご飯',cat:'主食',time:'20分',srv:2,tags:['和食'],ings:['鶏ひき肉 150g','醤油 大さじ2','ご飯 2膳'],steps:['炒めて味付け（10分）','炒り卵（5分）','盛り付け'],memo:'',emoji:'🍚',src:'サンプル',url:'',createdAt:Date.now()-2},
+        {id:1006,title:'味噌汁',cat:'スープ',time:'10分',srv:2,tags:['和食'],ings:['豆腐 1/2丁','わかめ 少々','だし 適量'],steps:['だしを沸かす（3分）','仕上げる（7分）'],memo:'毎日の定番。',emoji:'🥣',src:'サンプル',url:'',createdAt:Date.now()-1},
+      ];
+      for (const r of samples) await DB.putRecipe(r);
+      State.recipes = samples;
+    }
+
+    // 描画
+    $('loading').style.display = 'none';
+    $('app').style.visibility = 'visible';
+    renderHome();
+
+  } catch (err) {
+    $('loading').innerHTML = `<div style="color:#A32D2D;text-align:center;padding:20px">初期化エラー:<br>${err.message}<br><br><button onclick="location.reload()" style="padding:10px 20px;background:#378ADD;color:white;border:none;border-radius:8px;font-size:14px">再読み込み</button></div>`;
+  }
+})();
+</script>
+</body>
+</html>
